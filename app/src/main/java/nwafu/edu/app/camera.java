@@ -9,6 +9,7 @@ import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Matrix;
 import android.hardware.Camera;
 import android.net.Uri;
 import android.os.Bundle;
@@ -95,8 +96,8 @@ public class camera extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 Intent intent =new Intent(camera.this,Imageview.class);
+                intent.putExtra("mode",1);
                 startActivity(intent);
-                finish();
             }
         });
     }
@@ -197,12 +198,12 @@ public class camera extends AppCompatActivity {
                         if ((path = saveFile(data)) != null) {
                             list.add(path);
                             adapter2.notifyDataSetChanged();
-                            Toast.makeText(camera.this, path , Toast.LENGTH_SHORT).show();
+//                            Toast.makeText(camera.this, path , Toast.LENGTH_SHORT).show();
                         } else {
                             Toast.makeText(camera.this, "保存照片失败", Toast.LENGTH_SHORT).show();
                         }
-                        stopPreview();
-                        startPreview();
+                        //stopPreview();
+                        camera.startPreview();
                     }
                 });
             }
@@ -217,15 +218,25 @@ public class camera extends AppCompatActivity {
             fos.write(bytes);
             fos.flush();
             fos.close();
-            Bitmap bmp = BitmapFactory.decodeFile(workingpath+"/"+nowtime+".jpg");
+            Bitmap bitmap = BitmapFactory.decodeFile(workingpath+"/"+nowtime+".jpg");
+            if (bitmap == null)
+                return null;
+
+            int w = bitmap.getWidth();
+            int h = bitmap.getHeight();
+
+            // Setting post rotate to 90
+            Matrix mtx = new Matrix();
+            mtx.postRotate(270);
+            Bitmap.createBitmap(bitmap, 0, 0, w, h, mtx, true);
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            int options = 5;
-            bmp.compress(Bitmap.CompressFormat.JPEG, options, baos);
-                file = new File(workingpath,nowtime+".jpg");
-                fos = new FileOutputStream(file);
-                fos.write(baos.toByteArray());
-                fos.flush();
-                fos.close();
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 90,baos);
+            file = new File(workingpath,nowtime+".jpg");
+            fos = new FileOutputStream(file);
+            fos.write(baos.toByteArray());
+            fos.flush();
+            fos.close();
+
             return file.getAbsolutePath();
         } catch (IOException e) {
             e.printStackTrace();
@@ -236,11 +247,14 @@ public class camera extends AppCompatActivity {
         camera = Camera.open();
         Camera.Parameters params = camera.getParameters();
         params.setFocusMode(Camera.Parameters.FOCUS_MODE_AUTO);
+        params.setPictureSize(4000, 3000);
+        System.out.println(params.getSupportedPictureSizes());
         camera.setParameters(params);
         try {
             camera.setPreviewDisplay(sfv_preview.getHolder());
             camera.setDisplayOrientation(90);   //让相机旋转90度
             camera.startPreview();
+
         } catch (IOException e) {
             e.printStackTrace();
         }

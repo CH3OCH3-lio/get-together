@@ -87,6 +87,10 @@ import com.google.android.gms.appindexing.AppIndex;
 import com.google.android.gms.common.api.GoogleApiClient;
 
 
+import org.greenrobot.eventbus.EventBus;
+import org.greenrobot.eventbus.Subscribe;
+import org.greenrobot.eventbus.ThreadMode;
+
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -106,23 +110,26 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 
+import me.nereo.multi_image_selector.MultiImageSelector;
 import okhttp3.Call;
 import okhttp3.Callback;
 import okhttp3.MediaType;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 
+import static java.lang.Thread.sleep;
 import static nwafu.edu.app.mainpage.list;
 
 
 public class Imageview extends AppCompatActivity {
     private RecyclerView mrv_img;
     private TextView mtv_msg;
-    private Button back;
+    private Button backback;
     private Button cancel;
     private Button start;
     imgAdapter adapter;
     String result;
+    public int mode;
 
     String serverip = "192.168.43.112";
     private boolean backstatus=false;
@@ -136,13 +143,45 @@ public class Imageview extends AppCompatActivity {
         setContentView(R.layout.activity_imageview);
         mtv_msg = findViewById(R.id.tv_msg);
         mrv_img = findViewById(R.id.rv_img);
-        back =findViewById(R.id.button2);
+        backback =findViewById(R.id.button2);
         cancel=findViewById(R.id.button3);
         start=findViewById(R.id.button4);
+        EventBus.getDefault().register(this);
         loadUi();
 
         Intent back =getIntent();
+        mode = back.getIntExtra("mode",0);
         backstatus=back.getBooleanExtra("back",false);
+        backback.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if(mode == 2)
+                {
+                    Intent intent = new Intent();
+                    setResult(101,intent);
+                    finish();
+                }
+                else if(mode==1)
+                {
+                    finish();
+                }
+            }
+        });
+        cancel.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if(mode == 2)
+                {
+                    Intent intent = new Intent();
+                    setResult(101,intent);
+                    finish();
+                }
+                else if(mode==1)
+                {
+                    finish();
+                }
+            }
+        });
         start.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -163,10 +202,20 @@ public class Imageview extends AppCompatActivity {
                             File img=new File(path);
                             filelist.add(img);
                         }
-                        result = UploadServerUtils.uploadLogFiles(uploadUrl,filePaths,folderPath);
+                        //result = UploadServerUtils.uploadLogFiles(uploadUrl,filePaths,folderPath);
                         //UploadServerUtils.sendMultipart(uploadUrl,filelist);
+
+//                        try {
+//                            sleep(1000);
+//                        } catch (InterruptedException e) {
+//                            e.printStackTrace();
+//                        }
+                        result="{'coordinate':coordinate,'path':path,'info':info}";
+                        EventBus.getDefault().post(new MessageEvent("拼接完成！！！！"));
+
                         pd.cancel();
                     }
+
                 }).start();
 
             }
@@ -186,7 +235,12 @@ public class Imageview extends AppCompatActivity {
                 //横屏
             }
             mrv_img.setLayoutManager(layoutManager);
-            adapter = new imgAdapter(list);
+            List<String> showlist=new ArrayList<>();
+            for(String path : list)
+            {
+                showlist.add(path);
+            }
+            adapter = new imgAdapter(showlist);
             mrv_img.setAdapter(adapter);
         } else {
             mtv_msg.setVisibility(View.VISIBLE);
@@ -218,7 +272,8 @@ public class Imageview extends AppCompatActivity {
             private List<String> list;
 
             public imgAdapter(List<String> list) {
-                this.list = list;
+                this.list=list;
+                this.list.add("plus");
             }
 
             class ViewHolder extends RecyclerView.ViewHolder {
@@ -248,39 +303,79 @@ public class Imageview extends AppCompatActivity {
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, final int position) {
         final String img = list.get(position);
-        Uri imguri= Uri.fromFile(new File(img));
-        if (imguri != null) {
-            Glide.with(Imageview.this)
-                    .load(imguri)
-                    .fitCenter()
-                    //.centerCrop()
-                    .placeholder(R.mipmap.place)
-                    .into(holder.iv_img);
-            holder.tv_name.setVisibility(View.VISIBLE);
-            holder.item_bg.setBackground(getDrawable(R.drawable.selector_btn_item));
-            holder.ib_delete.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    list.remove(position);
-                    adapter.notifyDataSetChanged();
-                }
-            });
-
+        if(img.equals("plus"))
+        {
+            holder.iv_img.setImageResource(R.drawable.selector_item_add);
+            holder.item_bg.setBackgroundColor(Color.TRANSPARENT);
+            holder.ib_delete.setVisibility(View.GONE);
             holder.myView.setOnClickListener(new View.OnClickListener() {
                 @Override
-                public void onClick(View ve) {
-                    Intent showbigger =new Intent(Imageview.this,showdetail.class);
-                    String img = list.get(position);
-                    Uri imguri= Uri.fromFile(new File(img));
-                    showbigger.putExtra("BiggerUri",String.valueOf(imguri));
-                    startActivity(showbigger);
+                public void onClick(View v) {
+                    if(mode == 2)
+                    {
+                        Intent intent = new Intent();
+                        setResult(101,intent);
+                        finish();
+                    }
+                    else if(mode==1)
+                    {
+                        finish();
+                    }
                 }
             });
-        } else return;
+        }
+        else
+        {
+            Uri imguri= Uri.fromFile(new File(img));
+            if (imguri != null) {
+                Glide.with(Imageview.this)
+                        .load(imguri)
+                        .fitCenter()
+                        //.centerCrop()
+                        .placeholder(R.mipmap.place)
+                        .into(holder.iv_img);
+                holder.tv_name.setVisibility(View.VISIBLE);
+                holder.item_bg.setBackground(getDrawable(R.drawable.selector_btn_item));
+                holder.ib_delete.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        list.remove(position);
+                        adapter.notifyDataSetChanged();
+                    }
+                });
+
+                holder.myView.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View ve) {
+                        Intent showbigger =new Intent(Imageview.this,showdetail.class);
+                        String img = list.get(position);
+                        Uri imguri= Uri.fromFile(new File(img));
+                        showbigger.putExtra("BiggerUri",String.valueOf(imguri));
+                        startActivity(showbigger);
+                    }
+                });
+            } else return;
+        }
+
     }
     @Override
     public int getItemCount() {
         return list == null ? 0 : list.size();
     }
 }
+    @Override
+    protected void onDestroy() {
+        EventBus.getDefault().unregister(this);
+        super.onDestroy();
+    }
+
+    @Subscribe(threadMode = ThreadMode.BACKGROUND)
+    public void Onconnected(MessageEvent messageEvent) {
+        System.out.println(messageEvent.getMessage());
+        if(messageEvent.getMessage().equals("拼接完成！！！！")) {
+            Intent deal = new Intent(Imageview.this, result.class);
+            deal.putExtra("result", result);
+            startActivity(deal);
+        }
+    }
 }

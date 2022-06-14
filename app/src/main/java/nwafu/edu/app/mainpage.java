@@ -71,7 +71,6 @@ public class mainpage extends AppCompatActivity {
                 {
                     Intent intent =new Intent(mainpage.this,camera.class);
                     startActivity(intent);
-                    finish();
                 }
 
             }
@@ -87,6 +86,9 @@ public class mainpage extends AppCompatActivity {
                 {
                     MultiImageSelector selector = MultiImageSelector.create(mainpage.this);
                     selector.count(100);//z最大选择数量
+                    selector.showCamera(false);
+                    ArrayList<String> nothing=new ArrayList<>();
+                    selector.origin(nothing);
                     selector.multi();//多选
                     selector.start(mainpage.this, 10);
                 }
@@ -103,11 +105,31 @@ public class mainpage extends AppCompatActivity {
                 list = data.getStringArrayListExtra(MultiImageSelectorActivity.EXTRA_RESULT);
                 System.out.println(list);
                 Intent intent =new Intent(mainpage.this,Imageview.class);
-                startActivity(intent);
+                intent.putExtra("mode", 2);
+                startActivityForResult(intent,15);
+
 //                Bitmap bitmap = BitmapFactory.decodeFile(path.get(0));
 //                showicon.setImageBitmap(bitmap);
             }
         }
+        if(requestCode == 15)
+        {
+            if(resultCode==101)
+            {
+                MultiImageSelector selector = MultiImageSelector.create(mainpage.this);
+                selector.count(100);//z最大选择数量
+                selector.showCamera(false);
+                ArrayList<String> save=new ArrayList<>();
+                    for(String path : list)
+                    {
+                        save.add(path);
+                    }
+                selector.origin(save);
+                selector.multi();//多选
+                selector.start(mainpage.this, 10);
+            }
+        }
+
     }
 
 }
