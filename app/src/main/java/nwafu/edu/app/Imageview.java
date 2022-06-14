@@ -28,6 +28,8 @@ import com.bumptech.glide.Glide;
 import java.io.File;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.URL;
+import java.net.URLConnection;
 import java.nio.file.Path;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -85,6 +87,8 @@ import android.widget.Toast;
 import com.bumptech.glide.Glide;
 import com.google.android.gms.appindexing.AppIndex;
 import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 
 
 import org.greenrobot.eventbus.EventBus;
@@ -109,6 +113,8 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
 
 import me.nereo.multi_image_selector.MultiImageSelector;
 import okhttp3.Call;
@@ -116,6 +122,7 @@ import okhttp3.Callback;
 import okhttp3.MediaType;
 import okhttp3.RequestBody;
 import okhttp3.Response;
+import top.zibin.luban.Luban;
 
 import static java.lang.Thread.sleep;
 import static nwafu.edu.app.mainpage.list;
@@ -130,11 +137,15 @@ public class Imageview extends AppCompatActivity {
     imgAdapter adapter;
     String result;
     public int mode;
+    String resultpath;
+
+    static File originfile;
+    static File cropfile;
 
     String serverip = "192.168.43.112";
     private boolean backstatus=false;
     public ProgressDialog pd;
-
+    String workingpath = Environment.getExternalStorageDirectory() + "/" + "Pictures" + "/" +"ges";
 
 
     @Override
@@ -189,9 +200,12 @@ public class Imageview extends AppCompatActivity {
                 pd.setMessage("正在拼接中...");
                 pd.setCancelable(false);
                 pd.show();
+
+
                 new Thread(new Runnable() {
                     @Override
                     public void run() {
+
                         String uploadUrl = "http://172.20.10.12:8081/aic/func/upFile";
                         List<String> filePaths =list;
                         String folderPath = "aaa";
@@ -202,17 +216,37 @@ public class Imageview extends AppCompatActivity {
                             File img=new File(path);
                             filelist.add(img);
                         }
-                        //result = UploadServerUtils.uploadLogFiles(uploadUrl,filePaths,folderPath);
+
+                        for(File f :filelist)
+                        {
+                            System.out.println(f.length()+"\n");
+                        }
+                        try {
+                            Luban.with(Imageview.this).load(filelist).get();
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                        for(File f :filelist)
+                        {
+                            System.out.println(f.length()+"\n");
+                        }
+
+                        result = UploadServerUtils.uploadLogFiles(uploadUrl,filePaths,folderPath);
                         //UploadServerUtils.sendMultipart(uploadUrl,filelist);
 
-//                        try {
-//                            sleep(1000);
-//                        } catch (InterruptedException e) {
-//                            e.printStackTrace();
-//                        }
-                        result="{'coordinate':coordinate,'path':path,'info':info}";
-                        EventBus.getDefault().post(new MessageEvent("拼接完成！！！！"));
+                        //result="{'coordinate':coordinate,'path':path,'info':info}";
+                        System.out.println(result);
+                        Map<String,String> resultmap= new Gson().fromJson(result, new TypeToken<Map<String,String>>(){}.getType());
 
+                        //resultpath = "http://172.20.10.12:8081/aic/uploadTemp/2742743caec64b8d9f1ca06da9ced316/ec8c2ca04a4f4b51a0bb92633ffa74e5/b107a48da89c4acc912ce1411418ba03.png";
+                        resultpath = resultmap.get("path");
+                        System.out.println("resultpath"+resultpath);
+                        try {
+                            download(resultpath);
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
+                        EventBus.getDefault().post(new MessageEvent("拼接完成！！！！"));
                         pd.cancel();
                     }
 
@@ -220,6 +254,47 @@ public class Imageview extends AppCompatActivity {
 
             }
         });
+    }
+
+
+    private void download(final String resultpath) throws Exception{
+        File newdir = new File(workingpath);
+        if (!newdir.exists()) {
+            newdir.mkdir();
+            System.out.println("创建文件夹路径为：" + workingpath);
+        }
+        workingpath=workingpath+ "/" +"result";
+        newdir = new File(workingpath);
+        if (!newdir.exists()) {
+            newdir.mkdir();
+            System.out.println("创建文件夹路径为：" + workingpath);
+        }
+        Date now = new Date(System.currentTimeMillis());
+        String nowtime = new SimpleDateFormat("yyyyMMddHHmmssSSS").format(now);
+        originfile =new File(workingpath,nowtime+"O.png");
+        downloada(resultpath,originfile);
+        cropfile = new File(workingpath,nowtime+"C.png");
+    }
+    public static void downloada(String urlString ,File file) throws Exception {
+        // 构造URL
+        URL url = new URL(urlString);
+        // 打开连接
+        URLConnection con = url.openConnection();
+        // 输入流
+        InputStream is = con.getInputStream();
+        // 1K的数据缓冲
+        byte[] bs = new byte[1024];
+        // 读取到的数据长度
+        int len;
+        // 输出的文件流
+        FileOutputStream os = new FileOutputStream(file, true);
+        // 开始读取
+        while ((len = is.read(bs)) != -1) {
+            os.write(bs, 0, len);
+        }
+        // 完毕，关闭所有链接
+        os.close();
+        is.close();
     }
 
     private void loadUi() {
@@ -375,6 +450,13 @@ public class Imageview extends AppCompatActivity {
         if(messageEvent.getMessage().equals("拼接完成！！！！")) {
             Intent deal = new Intent(Imageview.this, result.class);
             deal.putExtra("result", result);
+//            originfile = new File(workingpath,"20220614163252643O.png");
+//            cropfile = new File(workingpath,"20220614163252643C.png");
+            deal.putExtra("originfile",String.valueOf(Uri.fromFile(originfile)));
+            deal.putExtra("cropfile",String.valueOf(Uri.fromFile(cropfile)));
+           // deal.putExtra("originfile",sb);
+
+            System.out.println(originfile);
             startActivity(deal);
         }
     }

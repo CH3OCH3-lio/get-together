@@ -27,6 +27,7 @@ import android.widget.Toast;
 
 import com.bumptech.glide.Glide;
 
+import java.io.BufferedOutputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -214,28 +215,22 @@ public class camera extends AppCompatActivity {
             Date now = new Date(System.currentTimeMillis());
             String nowtime = new SimpleDateFormat("yyyyMMddHHmmssSSS").format(now);
             File file = new File(workingpath,nowtime+".jpg");
+
             FileOutputStream fos = new FileOutputStream(file);
             fos.write(bytes);
             fos.flush();
             fos.close();
-            Bitmap bitmap = BitmapFactory.decodeFile(workingpath+"/"+nowtime+".jpg");
-            if (bitmap == null)
-                return null;
 
-            int w = bitmap.getWidth();
-            int h = bitmap.getHeight();
+            Bitmap bitmap=BitmapFactory.decodeFile(file.getPath());
+            Matrix matrix = new Matrix();
+            matrix.postRotate(90);
+            Bitmap resizedBitmap = Bitmap.createBitmap(bitmap, 0, 0,
+                    bitmap.getWidth(), bitmap.getHeight(), matrix, true);
 
-            // Setting post rotate to 90
-            Matrix mtx = new Matrix();
-            mtx.postRotate(270);
-            Bitmap.createBitmap(bitmap, 0, 0, w, h, mtx, true);
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            bitmap.compress(Bitmap.CompressFormat.JPEG, 90,baos);
-            file = new File(workingpath,nowtime+".jpg");
-            fos = new FileOutputStream(file);
-            fos.write(baos.toByteArray());
-            fos.flush();
-            fos.close();
+            BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream(file));
+            resizedBitmap.compress(Bitmap.CompressFormat.JPEG, 20, bos);
+            bos.flush();
+            bos.close();
 
             return file.getAbsolutePath();
         } catch (IOException e) {

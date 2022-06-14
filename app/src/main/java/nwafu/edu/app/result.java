@@ -10,6 +10,7 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.StrictMode;
 import android.provider.MediaStore;
 import android.view.View;
 import android.widget.Button;
@@ -30,6 +31,8 @@ import java.util.Map;
 
 import static android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION;
 import static android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION;
+import static nwafu.edu.app.Imageview.cropfile;
+import static nwafu.edu.app.Imageview.originfile;
 
 public class result extends AppCompatActivity {
     String result;
@@ -37,37 +40,51 @@ public class result extends AppCompatActivity {
     private ImageView showresult;
     String picpath;
     String workingpath = Environment.getExternalStorageDirectory() + "/" + "Pictures" + "/" +"ges";
-    File originfile;
-    File cropfile;
+    String originuri;
+    String cropuri;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_result);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+
+            StrictMode.VmPolicy.Builder builder = new StrictMode.VmPolicy.Builder();
+
+            StrictMode.setVmPolicy(builder.build());
+
+        }
         Intent back =getIntent();
         result= back.getStringExtra("result");
+        originuri=back.getStringExtra("originfile");
+        cropuri=back.getStringExtra("cropfile");
+
         result=result.replace("{","");
         result=result.replace("}","");
         System.out.println(result+"\n!!!!!1");
         //System.out.println(getStringToMap(result).get("path"));
         crop=findViewById(R.id.button9);
         showresult =findViewById(R.id.showresult);
-        picpath = "http://172.20.10.12:8081/aic/uploadTemp/2742743caec64b8d9f1ca06da9ced316/ec8c2ca04a4f4b51a0bb92633ffa74e5/b107a48da89c4acc912ce1411418ba03.png";
-        Glide.with(this).load(picpath).into(showresult);
-        newfile();
+        Glide.with(this).load(Uri.parse(originuri)).into(showresult);
+        //newfile();
         crop.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                cropImageUri(result.this,Uri.parse(picpath),Uri.fromFile(cropfile),3, 4, 3000, 4000, 250);
+                cropImageUri(result.this,Uri.parse(originuri),Uri.parse(cropuri),3, 4, 3000, 4000, 250);
             }
         });
         showresult.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Intent showbigger =new Intent(result.this,showdetail.class);
-                Uri imguri= Uri.fromFile(originfile);
-                showbigger.putExtra("BiggerUri",String.valueOf(imguri));
-                startActivity(showbigger);
+
+                Intent intent = new Intent(Intent.ACTION_VIEW);
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+
+                intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+
+                intent.addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+                intent.setDataAndType(Uri.parse(originuri), "image/*");
+                startActivity(intent);
             }
         });
     }
@@ -147,7 +164,6 @@ public class result extends AppCompatActivity {
             intent.addFlags(FLAG_GRANT_READ_URI_PERMISSION);
             intent.addFlags(FLAG_GRANT_WRITE_URI_PERMISSION);
         }
-
         intent.setDataAndType(orgUri, "image/*");
         // 设置裁剪
         intent.putExtra("crop", "true");
